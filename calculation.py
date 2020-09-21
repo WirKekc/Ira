@@ -1,36 +1,58 @@
 import win32com.client
+from datetime import date, timedelta
 import numpy as np
 
-Excel = win32com.client.Dispatch("Excel.Application")
-wb = Excel.Workbooks.Open(u'D:\\Downloads\\Графики_Угданская_7.xlsx')
-sheet = wb.Worksheets(u'Лист1')
 
+def from_file(name):
+    el = []
+    with open(f'.\\data\\{name}') as f:
+        for line in f:
+            el.append(float(line.replace(',', '.').strip()))
+    return el
+
+
+def line_func(y, x, x1):
+    A = np.vstack([x, np.ones(len(x))]).T
+    m, c = np.linalg.lstsq(A, y)[0]
+    return [m*i + c for i in x1]
+
+
+# Переменные, короые нужно будет вводить при запуске программы
 max_t = 18
-t_gr = 114
+t_gr = [114, 70]
+S = 4325.2
+d1 = date(2020, 1, 1)  # начальная дата
 
 # X значения
-x = np.array([r[0].value for r in sheet.Range(f"I3:I143")])
-x1 = np.array([r[0].value for r in sheet.Range(f"U3:U60")])
-x_date = np.array([r[0].value for r in sheet.Range(f"K3:K143")])
+t_nv = from_file('T_nv.txt')
+temperature = from_file('weather.txt')
 
-# Y значения
-t1_y = np.array([r[0].value for r in sheet.Range(f"B3:B143")])
-t2_y = np.array([r[0].value for r in sheet.Range(f"C3:C143")])
-m1_y = np.array([r[0].value for r in sheet.Range(f"E3:E143")])
-m2_y = np.array([r[0].value for r in sheet.Range(f"F3:F143")])
-q_y = np.array([r[0].value for r in sheet.Range(f"H3:H143")])
-# значения, которые можно вычеслить в питоне
-# t1_2sk_y = np.array([r[0].value for r in sheet.Range(f"W3:W60")])
-# t1_apr_y = np.array([r[0].value for r in sheet.Range(f"Y3:Y60")])
-# t2_apr_y = np.array([r[0].value for r in sheet.Range(f"Z3:Z60")])
-# t2_2_y = np.array([r[0].value for r in sheet.Range(f"X3:X60")])
-# q_apr_y = np.array([r[0].value for r in sheet.Range(f"AC3:AC60")])
-# q_s_y = np.array([r[0].value for r in sheet.Range(f"P3:P143")])
-# q_s_apr_y = np.array([r[0].value for r in sheet.Range("AD3:AD60")])
-# ud_nagr_y = np.array([r[0].value for r in sheet.Range("O3:O143")])
-# m1_date_y = np.array([r[0].value for r in sheet.Range("L3:L143")])
-# m2_date_y = np.array([r[0].value for r in sheet.Range("M3:M143")])
+# # Y значения
+t1 = from_file('T1.txt')
+t2 = from_file('T2.txt')
+m1 = from_file('M1.txt')
+m2 = from_file('M2.txt')
+q = from_file('Q.txt')
 
-t1_2sk_y = [((max_t-t_gr)/56 * i + (19*max_t + 9*t_gr)/28) for i in x1]
-#t1_2sk_y = (max_t-t_gr)/56 * x1[1] + (19*max_t + 9*t_gr)/28
-print(t1_2sk_y)
+t1_y = np.array([t1 for _, t1 in sorted(zip(temperature, t1))])
+t2_y = np.array([t2 for _, t2 in sorted(zip(temperature, t2))])
+m1_y = np.array([m1 for _, m1 in sorted(zip(temperature, m1))])
+m2_y = np.array([m2 for _, m2 in sorted(zip(temperature, m2))])
+q_y = np.array([q for _, q in sorted(zip(temperature, q))])
+ud_nagrev_y = [70*0.073/22 for i in range(len(temperature))]
+
+
+t1_2_y = [((max_t-t_gr[0])/56 * i + (19*max_t + 9*t_gr[0])/28) for i in t_nv]
+t2_2_y = np.array([((max_t-t_gr[1])/56 * i + (19*max_t + 9*t_gr[1])/28) for i in t_nv])
+t1_2sk_y = np.array([i if i > 70 else 70 for i in t1_2_y])
+q_s_y = np.array([(i*1000)/S for i in q_y])
+delta = timedelta(days=len(temperature)-1)         # timedelta
+date = np.array([d1 + timedelta(i) for i in range(delta.days + 1)])
+
+
+t1_apr_y = np.array(line_func(t1_y, temperature, t_nv))
+t2_apr_y = np.array(line_func(t2_y, temperature, t_nv))
+q_apr_y = np.array(line_func(q_y, temperature, t_nv))
+q_s_apr_y = np.array(line_func(q_s_y, temperature, t_nv))
+
+print(ud_nagrev_y)
